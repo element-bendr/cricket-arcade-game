@@ -2,12 +2,17 @@ import { GAME_WIDTH, GAME_HEIGHT, PLAYER_SPEED } from '../constants.js';
 import { soundManager } from '../audio/SoundManager.js';
 import ParticleManager from '../effects/ParticleManager.js';
 
+// Cricket pitch boundaries
+const PITCH_LEFT = 350;
+const PITCH_RIGHT = 450;
+const PITCH_CENTER = (PITCH_LEFT + PITCH_RIGHT) / 2;
+
 export default class GameScene extends Phaser.Scene {
     constructor() {
         super({ key: 'GameScene' });
         this.score = 0;
         this.gameOver = false;
-        this.totalBalls = 30; // 5 overs
+        this.totalBalls = 18; // 3 overs
         this.currentBall = 0;
         this.currentOver = 0;
         this.ballInPlay = false;
@@ -27,8 +32,8 @@ export default class GameScene extends Phaser.Scene {
     }
 
     setupGameObjects() {
-        // Add bat (player)
-        this.player = this.physics.add.sprite(400, 550, 'bat');
+        // Add bat (player) within pitch boundaries
+        this.player = this.physics.add.sprite(PITCH_CENTER, 550, 'bat');
         this.player.setCollideWorldBounds(true);
         this.player.body.allowGravity = false;
         this.player.setImmovable(true);
@@ -70,13 +75,14 @@ export default class GameScene extends Phaser.Scene {
     }
 
     setupControls() {
-        // Setup keyboard controls
+        // Setup keyboard controls with pitch boundaries
         this.cursors = this.input.keyboard.createCursorKeys();
 
-        // Add mouse/touch controls
+        // Add mouse/touch controls with pitch boundaries
         this.input.on('pointermove', (pointer) => {
             if (!this.gameOver) {
-                this.player.x = Phaser.Math.Clamp(pointer.x, 50, GAME_WIDTH - 50);
+                // Clamp player position within pitch
+                this.player.x = Phaser.Math.Clamp(pointer.x, PITCH_LEFT, PITCH_RIGHT);
             }
         });
     }
@@ -103,12 +109,14 @@ export default class GameScene extends Phaser.Scene {
     createBall() {
         if (this.gameOver || this.ballInPlay) return;
 
-        // Create new ball
-        const x = Phaser.Math.Between(300, 500);
+        // Create new ball within pitch boundaries
+        const x = PITCH_CENTER + Phaser.Math.Between(-30, 30);
         this.ball = this.physics.add.sprite(x, 0, 'ball');
         this.ball.setBounce(0.7);
         this.ball.setCollideWorldBounds(true);
-        this.ball.setVelocity(Phaser.Math.Between(-50, 50), 200);
+        
+        // Constrain initial ball movement to pitch
+        this.ball.setVelocity(Phaser.Math.Between(-20, 20), 200);
         this.ball.wasHit = false;
 
         // Set up collision with bat
@@ -123,19 +131,23 @@ export default class GameScene extends Phaser.Scene {
     update() {
         if (this.gameOver) return;
 
-        // Handle keyboard controls
+        // Handle keyboard controls within pitch boundaries
         if (this.cursors.left.isDown) {
-            this.player.setVelocityX(-300);
+            const newX = this.player.x - PLAYER_SPEED;
+            this.player.x = Phaser.Math.Clamp(newX, PITCH_LEFT, PITCH_RIGHT);
         } else if (this.cursors.right.isDown) {
-            this.player.setVelocityX(300);
-        } else {
-            this.player.setVelocityX(0);
+            const newX = this.player.x + PLAYER_SPEED;
+            this.player.x = Phaser.Math.Clamp(newX, PITCH_LEFT, PITCH_RIGHT);
         }
 
         // Check for missed ball
         if (this.ball && !this.ball.wasHit && this.ball.y > 600) {
-            // Game over on missed ball
             this.endGame();
+        }
+
+        // Keep ball within pitch until hit
+        if (this.ball && !this.ball.wasHit) {
+            this.ball.x = Phaser.Math.Clamp(this.ball.x, PITCH_LEFT, PITCH_RIGHT);
         }
     }
 
@@ -223,18 +235,18 @@ export default class GameScene extends Phaser.Scene {
         // Draw main field
         this.add.rectangle(400, 300, 800, 600, 0x1a4c25);
         
-        // Draw pitch
-        this.add.rectangle(400, 300, 100, 600, 0x9c9a6d);
+        // Draw pitch with clear boundaries
+        this.add.rectangle(PITCH_CENTER, 300, PITCH_RIGHT - PITCH_LEFT, 600, 0x9c9a6d);
         
         // Draw crease lines
         const graphics = this.add.graphics();
         graphics.lineStyle(3, 0xffffff);
         
         // Batting crease
-        graphics.strokeRect(350, 500, 100, 5);
+        graphics.strokeRect(PITCH_LEFT, 500, PITCH_RIGHT - PITCH_LEFT, 5);
         
         // Bowling crease
-        graphics.strokeRect(350, 100, 100, 5);
+        graphics.strokeRect(PITCH_LEFT, 100, PITCH_RIGHT - PITCH_LEFT, 5);
         
         // Draw boundary
         graphics.lineStyle(5, 0xffffff);
