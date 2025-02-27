@@ -10,12 +10,17 @@ export default class GameScene extends Phaser.Scene {
     }
 
     create() {
-        // Initialize particle manager
+        // Initialize managers
         this.particles = new ParticleManager(this);
-
-        // Create field background
-        this.drawCricketField();
         
+        // Set up game elements
+        this.drawCricketField();
+        this.setupGameObjects();
+        this.setupCollisions();
+        this.setupControls();
+    }
+
+    setupGameObjects() {
         // Add bat (player)
         this.player = this.physics.add.sprite(400, 550, 'bat');
         this.player.setCollideWorldBounds(true);
@@ -33,13 +38,16 @@ export default class GameScene extends Phaser.Scene {
             stroke: '#000000',
             strokeThickness: 3
         });
-        
+
+        // Initialize score
+        this.score = 0;
+        this.gameOver = false;
+    }
+
+    setupCollisions() {
         // Setup collision between bat and balls
         this.physics.add.collider(this.player, this.balls, this.hitBall, null, this);
-        
-        // Setup keyboard controls
-        this.cursors = this.input.keyboard.createCursorKeys();
-        
+
         // Create balls periodically
         this.ballInterval = 2000;
         this.time.addEvent({
@@ -48,6 +56,11 @@ export default class GameScene extends Phaser.Scene {
             callbackScope: this,
             loop: true
         });
+    }
+
+    setupControls() {
+        // Setup keyboard controls
+        this.cursors = this.input.keyboard.createCursorKeys();
 
         // Add mouse/touch controls
         this.input.on('pointermove', (pointer) => {
@@ -55,6 +68,7 @@ export default class GameScene extends Phaser.Scene {
                 this.player.x = Phaser.Math.Clamp(pointer.x, 50, GAME_WIDTH - 50);
             }
         });
+        
     }
 
     update() {
@@ -111,8 +125,14 @@ export default class GameScene extends Phaser.Scene {
         this.score += runs;
         this.scoreText.setText('Score: ' + this.score);
         
-        // Create visual effects for runs
+        // Create visual effects and sound
         this.particles.createRunsText(ball.x, ball.y, runs);
+        
+        // Add screen shake for boundaries
+        if (runs >= 4) {
+            this.particles.createScreenShake(runs === 6 ? 0.02 : 0.01);
+            this.particles.createBoundaryEffect(ball.x, ball.y, runs === 6 ? 0xffdd00 : 0x00ff00);
+        }
         
         // Make ball fly away
         ball.setVelocityY(-300);
