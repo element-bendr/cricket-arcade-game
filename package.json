@@ -33,10 +33,10 @@
     "mkdirp": "^3.0.1",
     "rimraf": "^5.0.5"
   },
-  "homepage": "https://your-username.github.io/cricket-arcade-game",
+  "homepage": "https://element-bendr.github.io/cricket-arcade-game",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/your-username/cricket-arcade-game.git"
+    "url": "git+https://github.com/element-bendr/cricket-arcade-game.git"
   },
   "engines": {
     "node": ">=16.0.0"
