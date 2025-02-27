@@ -1,0 +1,44 @@
+{
+  "name": "cricket-arcade-game",
+  "version": "1.0.0",
+  "description": "A fast-paced cricket arcade game built with Phaser 3",
+  "main": "src/game.js",
+  "type": "module",
+  "scripts": {
+    "start": "http-server src -p 8080 -c-1",
+    "clean": "rimraf dist",
+    "make-dist": "mkdirp dist",
+    "copy-files": "copyfiles -u 1 \"src/**/*\" dist",
+    "build": "npm run clean && npm run make-dist && npm run copy-files",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist",
+    "dev": "npm start"
+  },
+  "keywords": [
+    "cricket",
+    "arcade",
+    "game",
+    "phaser",
+    "html5"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "phaser": "^3.60.0"
+  },
+  "devDependencies": {
+    "copyfiles": "^2.4.1",
+    "gh-pages": "^6.1.0",
+    "http-server": "^14.1.1",
+    "mkdirp": "^3.0.1",
+    "rimraf": "^5.0.5"
+  },
+  "homepage": "https://your-username.github.io/cricket-arcade-game",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-username/cricket-arcade-game.git"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
