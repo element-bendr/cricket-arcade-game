@@ -3,18 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Play Cricket Arcade Game - A fast-paced cricket batting game. Can you score a century?">
-    <meta property="og:title" content="Cricket Arcade Game">
-    <meta property="og:description" content="Challenge your friends! Play this addictive cricket arcade game and try to beat the high score.">
-    <meta property="og:image" content="preview.png">
-    <meta property="og:type" content="website">
-    <meta name="twitter:card" content="summary_large_image">
-    <title>Cricket Arcade Game - Test Your Batting Skills!</title>
+    <title>Cricket Arcade Game</title>
     <link rel="stylesheet" href="styles.css">
+    <!-- Preload key assets -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" as="style">
+    <link rel="preload" href="assets/audio/bat-hit.js" as="audio">
+    <link rel="preload" href="assets/audio/crowd-cheer.js" as="audio">
+    
+    <!-- Add Phaser -->
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
 </head>
 <body>
-    <div id="game-container"></div>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="overlay fade-in">
+        <div class="modal">
+            <h2>Loading Game...</h2>
+            <div class="loading-bar"></div>
+        </div>
+    </div>
+
+    <!-- Game Container -->
+    <div id="game-container">
+        <!-- Game canvas will be inserted here by Phaser -->
+    </div>
+
+    <!-- Newsletter Modal -->
+    <div id="newsletter-modal" class="overlay" style="display: none;">
+        <div class="modal slide-up">
+            <h2>Join the Cricket Club!</h2>
+            <p>Get weekly cricket tips and game updates.</p>
+            <form class="newsletter-form">
+                <input type="email" placeholder="Your email" class="game-input newsletter-input">
+                <button type="submit" class="game-button">Subscribe</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Social Share Container -->
+    <div id="social-share" class="social-container" style="display: none;">
+        <a href="#" class="social-button twitter">
+            <i class="fab fa-twitter"></i> Share Score
+        </a>
+        <button class="social-button copy">
+            <i class="fas fa-link"></i> Copy Link
+        </button>
+    </div>
+
+    <!-- Toast Container for Notifications -->
+    <div id="toast-container"></div>
+
+    <!-- Game Scripts -->
     <script type="module" src="game.js"></script>
+    
+    <!-- Font Awesome for Icons -->
+    <script src="https://kit.fontawesome.com/your-code.js" crossorigin="anonymous"></script>
+
+    <script>
+        // Handle loading screen
+        window.addEventListener('load', () => {
+            const loadingScreen = document.getElementById('loading-screen');
+            setTimeout(() => {
+                loadingScreen.style.opacity = '0';
+                setTimeout(() => {
+                    loadingScreen.style.display = 'none';
+                }, 500);
+            }, 1000);
+        });
+
+        // Show toast notification
+        function showToast(message, duration = 3000) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            document.getElementById('toast-container').appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        }
+
+        // Handle newsletter subscription
+        document.querySelector('.newsletter-form')?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = e.target.querySelector('input').value;
+            if (email) {
+                localStorage.setItem('playerEmail', email);
+                showToast('Thanks for subscribing!');
+                document.getElementById('newsletter-modal').style.display = 'none';
+            }
+        });
+
+        // Handle copy link button
+        document.querySelector('.social-button.copy')?.addEventListener('click', () => {
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                showToast('Link copied to clipboard!');
+            });
+        });
+    </script>
 </body>
 </html>
