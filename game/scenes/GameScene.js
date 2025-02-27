@@ -7,6 +7,10 @@ export default class GameScene extends Phaser.Scene {
         super({ key: 'GameScene' });
         this.score = 0;
         this.gameOver = false;
+        this.totalBalls = 30; // 5 overs
+        this.currentBall = 0;
+        this.currentOver = 0;
+        this.ballInPlay = false;
     }
 
     create() {
@@ -16,8 +20,10 @@ export default class GameScene extends Phaser.Scene {
         // Set up game elements
         this.drawCricketField();
         this.setupGameObjects();
-        this.setupCollisions();
         this.setupControls();
+        
+        // Start first ball after delay
+        this.time.delayedCall(1000, this.scheduleNextBall, [], this);
     }
 
     setupGameObjects() {
@@ -27,35 +33,40 @@ export default class GameScene extends Phaser.Scene {
         this.player.body.allowGravity = false;
         this.player.setImmovable(true);
         
-        // Create ball group
-        this.balls = this.physics.add.group();
+        // Initialize ball as null (will be created when needed)
+        this.ball = null;
+        
+        // Add score and over information
+        this.setupScoreDisplay();
+
+        // Initialize game state
+        this.score = 0;
+        this.gameOver = false;
+    }
+
+    setupScoreDisplay() {
+        // Create score display container
+        this.scoreContainer = this.add.container(16, 16);
         
         // Add score text
-        this.scoreText = this.add.text(16, 16, 'Score: 0', { 
+        this.scoreText = this.add.text(0, 0, 'Score: 0', { 
             fontSize: '32px',
             fontFamily: 'Arial',
             color: '#ffffff',
             stroke: '#000000',
             strokeThickness: 3
         });
-
-        // Initialize score
-        this.score = 0;
-        this.gameOver = false;
-    }
-
-    setupCollisions() {
-        // Setup collision between bat and balls
-        this.physics.add.collider(this.player, this.balls, this.hitBall, null, this);
-
-        // Create balls periodically
-        this.ballInterval = 2000;
-        this.time.addEvent({
-            delay: this.ballInterval,
-            callback: this.createBall,
-            callbackScope: this,
-            loop: true
+        
+        // Add overs text
+        this.oversText = this.add.text(0, 40, 'Overs: 0.0', { 
+            fontSize: '24px',
+            fontFamily: 'Arial',
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 2
         });
+        
+        this.scoreContainer.add([this.scoreText, this.oversText]);
     }
 
     setupControls() {
@@ -68,15 +79,51 @@ export default class GameScene extends Phaser.Scene {
                 this.player.x = Phaser.Math.Clamp(pointer.x, 50, GAME_WIDTH - 50);
             }
         });
-        
     }
 
-    update() {
-        if (this.gameOver) {
+    updateOverDisplay() {
+        const overs = Math.floor(this.currentBall / 6);
+        const balls = this.currentBall % 6;
+        this.oversText.setText(`Overs: ${overs}.${balls}`);
+    }
+
+    scheduleNextBall() {
+        if (this.gameOver || this.ballInPlay) return;
+        
+        // Check if we've completed all overs
+        if (this.currentBall >= this.totalBalls) {
+            this.endGame();
             return;
         }
 
-        // Keyboard controls
+        // Schedule next ball delivery
+        this.time.delayedCall(2000, this.createBall, [], this);
+    }
+
+    createBall() {
+        if (this.gameOver || this.ballInPlay) return;
+
+        // Create new ball
+        const x = Phaser.Math.Between(300, 500);
+        this.ball = this.physics.add.sprite(x, 0, 'ball');
+        this.ball.setBounce(0.7);
+        this.ball.setCollideWorldBounds(true);
+        this.ball.setVelocity(Phaser.Math.Between(-50, 50), 200);
+        this.ball.wasHit = false;
+
+        // Set up collision with bat
+        this.physics.add.overlap(this.player, this.ball, this.hitBall, null, this);
+        
+        // Mark ball as in play
+        this.ballInPlay = true;
+        this.currentBall++;
+        this.updateOverDisplay();
+    }
+
+    update() {
+        if (this.gameOver) return;
+
+        // Handle keyboard controls
         if (this.cursors.left.isDown) {
             this.player.setVelocityX(-300);
         } else if (this.cursors.right.isDown) {
@@ -85,70 +132,65 @@ export default class GameScene extends Phaser.Scene {
             this.player.setVelocityX(0);
         }
 
-        // Check for missed balls
-        this.balls.getChildren().forEach(ball => {
-            if (ball.y > 600 && !ball.wasHit) {
-                this.endGame();
-            }
-        });
-    }
-
-    createBall() {
-        if (this.gameOver) return;
-
-        const x = Phaser.Math.Between(100, 700);
-        const ball = this.balls.create(x, 0, 'ball');
-        ball.setBounce(0.7);
-        ball.setCollideWorldBounds(true);
-        ball.setVelocity(Phaser.Math.Between(-100, 100), 200);
-        ball.wasHit = false;
+        // Check for missed ball
+        if (this.ball && !this.ball.wasHit && this.ball.y > 600) {
+            // Game over on missed ball
+            this.endGame();
+        }
     }
 
     hitBall(player, ball) {
-        if (ball.wasHit) return;
+        if (!this.ball || this.ball.wasHit) return;
         
-        ball.wasHit = true;
+        this.ball.wasHit = true;
         
-        // Calculate runs based on hit position
-        let runs = 1;
-        const hitQuality = Math.random();
+        // Calculate runs based on timing and position
+        const hitTiming = Math.abs(this.ball.y - player.y) / 100; // 0 to 1, lower is better
+        const hitPosition = Math.abs(this.ball.x - player.x) / 50; // 0 to 1, lower is better
+        const hitQuality = Math.max(0, 1 - (hitTiming + hitPosition));
         
+        let runs = 0;
         if (hitQuality > 0.9) {
             runs = 6;
         } else if (hitQuality > 0.7) {
             runs = 4;
         } else if (hitQuality > 0.5) {
             runs = 2;
+        } else if (hitQuality > 0.2) {
+            runs = 1;
         }
         
         // Update score
-        this.score += runs;
-        this.scoreText.setText('Score: ' + this.score);
-        
-        // Create visual effects and sound
-        this.particles.createRunsText(ball.x, ball.y, runs);
-        
-        // Add screen shake for boundaries
-        if (runs >= 4) {
-            this.particles.createScreenShake(runs === 6 ? 0.02 : 0.01);
-            this.particles.createBoundaryEffect(ball.x, ball.y, runs === 6 ? 0xffdd00 : 0x00ff00);
+        if (runs > 0) {
+            this.score += runs;
+            this.scoreText.setText('Score: ' + this.score);
+            
+            // Create visual effects
+            this.particles.createRunsText(ball.x, ball.y, runs);
+            
+            // Add effects for boundaries
+            if (runs >= 4) {
+                this.particles.createScreenShake(runs === 6 ? 0.02 : 0.01);
+                this.particles.createBoundaryEffect(ball.x, ball.y, runs === 6 ? 0xffdd00 : 0x00ff00);
+                soundManager.playSound('cheer', 0.8);
+            }
+            
+            // Play hit sound
+            soundManager.playSound('hit', 0.5);
         }
         
         // Make ball fly away
-        ball.setVelocityY(-300);
-        ball.setVelocityX((ball.x - player.x) * 2);
+        this.ball.setVelocityY(-300);
+        this.ball.setVelocityX((this.ball.x - player.x) * 2);
         
-        // Play hit sound
-        soundManager.playSound('hit', 0.5);
-        
-        // Play cheer for boundaries
-        if (runs >= 4) {
-            soundManager.playSound('cheer', 0.8);
-        }
-        
-        // Cleanup ball after delay
-        this.time.delayedCall(1000, () => {
-            ball.destroy();
+        // Clean up after delay
+        this.time.delayedCall(1500, () => {
+            if (this.ball) {
+                this.ball.destroy();
+                this.ball = null;
+                this.ballInPlay = false;
+                this.scheduleNextBall();
+            }
         });
     }
 
@@ -158,14 +200,23 @@ export default class GameScene extends Phaser.Scene {
         this.gameOver = true;
         this.physics.pause();
         
+        // Calculate final statistics
+        const overs = Math.floor(this.currentBall / 6) + (this.currentBall % 6) / 10;
+        const strikeRate = (this.score / this.currentBall * 100).toFixed(2);
+        
         // Save high score
         const highScore = localStorage.getItem('cricketHighScore') || 0;
         if (this.score > highScore) {
             localStorage.setItem('cricketHighScore', this.score);
         }
         
-        // Switch to game over scene
-        this.scene.start('GameOverScene', { score: this.score });
+        // Switch to game over scene with detailed stats
+        this.scene.start('GameOverScene', { 
+            score: this.score,
+            overs: overs,
+            balls: this.currentBall,
+            strikeRate: strikeRate
+        });
     }
 
     drawCricketField() {

@@ -9,6 +9,9 @@ export default class GameOverScene extends Phaser.Scene {
 
     init(data) {
         this.score = data.score || 0;
+        this.overs = data.overs || 0;
+        this.balls = data.balls || 0;
+        this.strikeRate = data.strikeRate || 0;
     }
 
     create() {
@@ -19,25 +22,32 @@ export default class GameOverScene extends Phaser.Scene {
         this.particles = new ParticleManager(this);
         this.socialUI = new SocialUI(this);
 
-        // Create background with gradient and animations
+        // Create gradient background with animation
         this.createBackground();
-        this.createGameOverDisplay(centerX, centerY);
-        this.createScoreDisplay(centerX, centerY);
-        this.createSocialFeatures();
-        this.setupRestartHandler(centerX, centerY);
+
+        // Create game over display with animations
+        this.createGameOverDisplay(centerX, centerY - 150);
+
+        // Show match statistics
+        this.createMatchStats(centerX, centerY - 50);
+
+        // Add social features
+        this.createSocialFeatures(centerX, centerY + 50);
+
+        // Setup restart handler
+        this.setupRestartHandler(centerX, centerY + 150);
     }
 
-    createGameOverDisplay(centerX, centerY) {
-        // Add animated game over text
-        const gameOverText = this.add.text(centerX, centerY - 150, 'GAME OVER', {
+    createGameOverDisplay(x, y) {
+        const gameOverText = this.add.text(x, y, 'GAME OVER', {
             fontSize: '64px',
             fontFamily: 'Arial',
             color: '#ff0000',
             stroke: '#000000',
             strokeThickness: 6
-        }).setOrigin(0.5).setScale(0);
+        }).setOrigin(0.5);
 
-        // Create dramatic entrance animation
+        // Add dramatic entrance animation
         this.tweens.add({
             targets: gameOverText,
             scale: { from: 0, to: 1 },
@@ -45,7 +55,7 @@ export default class GameOverScene extends Phaser.Scene {
             ease: 'Bounce.Out'
         });
 
-        // Add pulsing effect after bounce
+        // Add pulsing effect
         this.tweens.add({
             targets: gameOverText,
             scale: 1.1,
@@ -57,10 +67,10 @@ export default class GameOverScene extends Phaser.Scene {
         });
     }
 
-    createScoreDisplay(centerX, centerY) {
-        // Show final score with particle effects
-        const scoreContainer = this.add.container(centerX, centerY - 50);
+    createMatchStats(x, y) {
+        const statsContainer = this.add.container(x, y);
         
+        // Final score with animation
         const scoreText = this.add.text(0, 0, `Final Score: ${this.score}`, {
             fontSize: '32px',
             fontFamily: 'Arial',
@@ -69,27 +79,45 @@ export default class GameOverScene extends Phaser.Scene {
             strokeThickness: 3
         }).setOrigin(0.5);
 
-        scoreContainer.add(scoreText);
+        // Overs faced
+        const oversText = this.add.text(0, 40, `Overs: ${this.overs}`, {
+            fontSize: '24px',
+            fontFamily: 'Arial',
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 2
+        }).setOrigin(0.5);
 
-        // Show high score with effects
+        // Strike rate
+        const strikeRateText = this.add.text(0, 80, `Strike Rate: ${this.strikeRate}`, {
+            fontSize: '24px',
+            fontFamily: 'Arial',
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 2
+        }).setOrigin(0.5);
+
+        statsContainer.add([scoreText, oversText, strikeRateText]);
+
+        // Animate stats entrance
+        this.tweens.add({
+            targets: statsContainer.list,
+            x: { from: -100, to: 0 },
+            alpha: { from: 0, to: 1 },
+            duration: 800,
+            ease: 'Power2',
+            delay: this.tweens.stagger(200)
+        });
+
+        // Check for new high score
         const highScore = localStorage.getItem('cricketHighScore') || 0;
-        const isNewHighScore = this.score > highScore;
-
-        if (isNewHighScore) {
-            this.createNewHighScoreEffect(centerX, centerY);
-        } else {
-            this.add.text(centerX, centerY, `High Score: ${highScore}`, {
-                fontSize: '24px',
-                fontFamily: 'Arial',
-                color: '#ffffff',
-                stroke: '#000000',
-                strokeThickness: 2
-            }).setOrigin(0.5);
+        if (this.score > highScore) {
+            this.createNewHighScoreEffect(x, y + 120);
         }
     }
 
-    createNewHighScoreEffect(centerX, centerY) {
-        const highScoreText = this.add.text(centerX, centerY, 'NEW HIGH SCORE!', {
+    createNewHighScoreEffect(x, y) {
+        const highScoreText = this.add.text(x, y, 'NEW HIGH SCORE!', {
             fontSize: '40px',
             fontFamily: 'Arial',
             color: '#ffdd00',
@@ -97,8 +125,9 @@ export default class GameOverScene extends Phaser.Scene {
             strokeThickness: 4
         }).setOrigin(0.5);
 
-        // Create celebration effects
-        this.particles.createBoundaryEffect(centerX, centerY, 0xffdd00);
+        // Create celebratory particle effects
+        this.particles.createBoundaryEffect(x, y - 20, 0xffdd00);
+        this.particles.createBoundaryEffect(x, y + 20, 0xff8800);
         soundManager.playSound('cheer', 1.0);
 
         // Add pulsing animation
@@ -109,29 +138,37 @@ export default class GameOverScene extends Phaser.Scene {
             yoyo: true,
             repeat: -1
         });
-
-        // Add rotating particles
-        this.particles.createBoundaryEffect(centerX, centerY - 30, 0xffdd00);
-        this.particles.createBoundaryEffect(centerX, centerY + 30, 0xff8800);
     }
 
-    createSocialFeatures() {
-        // Initialize social UI with animations
-        this.socialUI.create(this.score);
+    createSocialFeatures(x, y) {
+        // Create share message
+        const shareMessage = `I scored ${this.score} runs in ${this.overs} overs with a strike rate of ${this.strikeRate}! Can you beat my score? 🏏`;
+        
+        // Initialize social UI with sharing options
+        this.socialUI.create(this.score, shareMessage);
 
-        // Add floating animation to social container
+        // Add tooltip for social buttons
+        const shareText = this.add.text(x, y - 30, 'Share your score!', {
+            fontSize: '24px',
+            fontFamily: 'Arial',
+            color: '#4CAF50',
+            stroke: '#000000',
+            strokeThickness: 2
+        }).setOrigin(0.5);
+
+        // Add floating animation to share text
         this.tweens.add({
-            targets: this.socialUI.container,
-            y: '+=10',
-            duration: 2000,
+            targets: shareText,
+            y: '-=10',
+            duration: 1500,
             yoyo: true,
             repeat: -1,
             ease: 'Sine.InOut'
         });
     }
 
-    setupRestartHandler(centerX, centerY) {
-        const restartText = this.add.text(centerX, centerY + 200, 'Press SPACE to Play Again', {
+    setupRestartHandler(x, y) {
+        const restartText = this.add.text(x, y, 'Press SPACE to Play Again', {
             fontSize: '24px',
             fontFamily: 'Arial',
             color: '#ffffff',
@@ -139,26 +176,25 @@ export default class GameOverScene extends Phaser.Scene {
             strokeThickness: 2
         }).setOrigin(0.5);
 
-        // Add floating animation
+        // Add blinking animation
         this.tweens.add({
             targets: restartText,
-            alpha: { from: 0.5, to: 1 },
-            duration: 1000,
+            alpha: 0.5,
+            duration: 800,
             yoyo: true,
             repeat: -1
         });
 
-        // Handle restart with cleanup
+        // Handle restart
         this.input.keyboard.once('keydown-SPACE', () => {
-            this.cleanupAndRestart();
+            this.cameras.main.fade(500, 0, 0, 0);
+            this.time.delayedCall(500, () => {
+                if (this.socialUI) {
+                    this.socialUI.destroy();
+                }
+                this.scene.start('GameScene');
+            });
         });
-    }
-
-    cleanupAndRestart() {
-        if (this.socialUI) {
-            this.socialUI.destroy();
-        }
-        this.scene.start('GameScene');
     }
 
     createBackground() {
@@ -174,5 +210,18 @@ export default class GameOverScene extends Phaser.Scene {
             gradient.lineStyle(1, color.color, 1);
             gradient.lineBetween(0, y, this.cameras.main.width, y);
         }
+
+        // Add subtle animation to background
+        this.tweens.addCounter({
+            from: 0,
+            to: 1,
+            duration: 3000,
+            repeat: -1,
+            yoyo: true,
+            onUpdate: (tween) => {
+                const t = tween.getValue();
+                gradient.alpha = 0.8 + t * 0.2;
+            }
+        });
     }
 }
